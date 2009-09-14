@@ -1,0 +1,5 @@
+; $Id$
+name = Webform Checkout Pane
+description = "Allows Webform nodes to be displayed as checkout panes."
+dependencies = uc_product uc_store uc_cart webform
+package = Ubercart - extra
