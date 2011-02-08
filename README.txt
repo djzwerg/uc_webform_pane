@@ -69,4 +69,4 @@ Notes
 -----
  * Fieldsets are not supported.
  
- * Views integration should be available, requires Webform 3.
+ * For Views integration see http://drupal.org/node/680386.
