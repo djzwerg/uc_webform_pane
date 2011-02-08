@@ -33,14 +33,19 @@ function uc_webform_pane_theme() {
  * Implementation of hook_form_alter().
  */
 function uc_webform_pane_form_alter(&$form, &$form_state, $form_id) {
+
   // Make sure the webform form supports files.
   if ($form_id == 'uc_cart_checkout_form') {
     $form['#attributes']['enctype'] = 'multipart/form-data';
+    // Support for Webform Validation module
+    if (function_exists('webform_validation_validate')) {
+      $form['#validate'][] = 'uc_webform_pane_webform_validation_validate';
+    }
   }
   
   // Add a config option to webform nodes to enable them as checkout panes.
-  if ($form_id == 'webform_node_form') {
-    $form['webform']['advanced']['uc_webform_pane'] = array(
+  if ($form_id == 'webform_configure_form') {
+    $form['advanced']['uc_webform_pane'] = array(
       '#type' => 'checkbox',
       '#return_value' => 1,
       '#default_value' => uc_webform_pane_nodestatus($form['nid']['#value']),
@@ -49,6 +54,7 @@ function uc_webform_pane_form_alter(&$form, &$form_state, $form_id) {
       '#weight' => -15,
       '#access' => user_access('administer store'),
     );
+    $form['#submit'][] = 'uc_webform_pane_webform_configure_form_submit';
   }
   
   // Add access validation to all UC checkout pane webforms.
@@ -61,15 +67,49 @@ function uc_webform_pane_form_alter(&$form, &$form_state, $form_id) {
       '#value' => user_access('administer store', $user) ? '1' : '0',
     );
     $form['#validate'][] = 'uc_webform_pane_access_validate';
+    $form['#validate'][] = 'webform_client_form_validate';
+  }
+}
+
+/**
+ * Send the values of each Webform Pane through to Webform Validation checkers.
+ */
+function uc_webform_pane_webform_validation_validate($form, &$form_state) {
+  $panes = $form_state['values']['panes'];
+  foreach ($panes as $paneid => $values) {
+    if (substr($paneid, 0, 11) == 'webform_nid') {
+      $nid = substr($paneid, 11);
+      
+      $pane_values = array();
+      $pane_values['op'] = t('Submit');
+      $pane_values['submitted'] = $values;
+      $pane_values['details']['nid'] = $nid;
+      
+      $pane_state = array();
+      $pane_state['values'] = $pane_values;
+      
+      webform_validation_validate($form, &$pane_state);
+    }
   }
 }
 
 /**
  * Make sure that the user trying to modify the UC checkout pane enabled webform has adequate Ubercart permissions.
  */
-function uc_webform_pane_access_validate($form, $form_state) {
+function uc_webform_pane_access_validate($form, &$form_state) {
   if ($form_state['values']['uc_access'] === '0') {
     form_set_error('uc_access', t('This webform is used as an Ubercart checkout pane and cannot be accessed outside of Ubercart and/or without the appropriate Ubercart permissions.'));
+  }
+}
+
+/**
+ * Mark the webform as a potential checkout pane.
+ */ 
+function uc_webform_pane_webform_configure_form_submit($form, &$form_state) {
+  if ($form_state['values']['uc_webform_pane']) {
+    db_query("INSERT IGNORE INTO {uc_webform_pane} (nid) VALUES (%d)", $form_state['values']['nid']);
+  } else {
+    db_query("DELETE FROM {uc_webform_pane} WHERE nid = %d", $form_state['values']['nid']);
   }
 }
 
@@ -81,20 +121,6 @@ function uc_webform_pane_nodeapi(&$node, $op, $a3 = NULL, $a4 = NUL) {
     switch ($op) {
       case 'load':
         $node->webform['uc_webform_pane'] = uc_webform_pane_nodestatus($node->nid);
-        break;
-      
-      case 'update':
-        if ($node->webform['uc_webform_pane']) {
-          db_query("INSERT IGNORE INTO {uc_webform_pane} (nid) VALUES (%d)", $node->nid);
-        } else {
-          db_query("DELETE FROM {uc_webform_pane} WHERE nid = %d", $node->nid);
-        }
-        break;
-        
-      case 'insert':
-        if ($node->webform['uc_webform_pane']) {
-          db_query("INSERT INTO {uc_webform_pane} (nid) VALUES (%d)", $node->nid);
-        }
         break;
         
       case 'delete':
@@ -125,11 +151,10 @@ function uc_webform_pane_token_values($type, $object = NULL) {
         $node = node_load($nid);
         $data = get_object_vars(_uc_webform_pane_get_data($nid, $object->order_id));
         foreach ($node->webform['components'] as $field) {
-          $view_function = '_webform_table_data_'. $field['type'];
-          if (function_exists($view_function)) {
-            $field_data = isset($data['data'][$field['cid']]) ? $data['data'][$field['cid']] : '';
-            $values['uc-webform-'.$nid.'-'.str_replace('_', '-', $field['form_key'])] = $view_function($field_data, $field);
-          }
+          $field_data = isset($data['data'][$field['cid']]['value']) ? $data['data'][$field['cid']]['value'] : NULL;
+          $field_element = webform_component_invoke($field['type'], 'display', $field, $field_data);
+          $submission_output = theme($field_element['#theme'], $field_element);
+          $values['uc-webform-'.$nid.'-'.str_replace('_', '-', $field['form_key'])] = $submission_output;
         }
       }
       break;
@@ -149,11 +174,7 @@ function uc_webform_pane_token_list($type = 'all') {
       $node = node_load($nid);
       $data = get_object_vars(_uc_webform_pane_get_data($nid, $object->order_id));
       foreach ($node->webform['components'] as $field) {
-        $view_function = '_webform_table_data_'. $field['type'];
-        if (function_exists($view_function)) {
-          $field_data = isset($data['data'][$field['cid']]) ? $data['data'][$field['cid']] : '';
-          $tokens['order']['uc-webform-'.$nid.'-'.str_replace('_', '-', $field['form_key'])] = $node->title.': '.$field['name'];
-        }
+        $tokens['order']['uc-webform-'.$nid.'-'.str_replace('_', '-', $field['form_key'])] = $node->title.': '.$field['name'];
       }
     }
   }
@@ -203,7 +224,7 @@ function uc_webform_pane_checkout_pane() {
 function uc_webform_pane_checkout_pane_callback($nid, $op, &$arg1, $arg2) {
   switch ($op) {
     case 'view':
-      $form = _uc_webform_pane_edit_form($nid, $arg1->order_id);
+      $form = _uc_webform_pane_edit_form($nid, $arg1->order_id, 'checkout');
       $node = node_load($nid);
       return array(
         'contents' => $form,
@@ -246,7 +267,7 @@ function uc_webform_pane_order_pane() {
       'title' => $node->title,
       'class' => 'abs-left',
       'weight' => 7,
-      'show' => array('view', 'edit'),
+      'show' => array('view', 'customer', 'edit'),
     );
   }
   
@@ -259,12 +280,13 @@ function uc_webform_pane_order_pane() {
 function uc_webform_pane_order_pane_callback($nid, $op, $arg1) {
   switch ($op) {
     case 'view':
+    case 'customer':
       $data = _uc_webform_pane_render($nid, $arg1->order_id);
       return theme('uc_webform_pane_order_view', $data);
       break;
     
     case 'edit-form':
-      $webform = _uc_webform_pane_edit_form($nid, $arg1->order_id);
+      $webform = _uc_webform_pane_edit_form($nid, $arg1->order_id, 'order');
       $node = node_load($nid);
       $form['webform_nid'.$nid] = array(
         '#type' => 'fieldset',
@@ -281,7 +303,9 @@ function uc_webform_pane_order_pane_callback($nid, $op, $arg1) {
     case 'edit-theme':
       $output = '<div id="webform-'.$nid.'-select"></div><table class="uc-webform-edit-table">';
       foreach (element_children($arg1['webform_nid'.$nid]) as $field) {
-        if ($arg1['webform_nid'.$nid][$field]['#type'] == 'hidden') {
+        if ($arg1['webform_nid'.$nid][$field]['#type'] == 'value') {
+          continue;
+        } else if ($arg1['webform_nid'.$nid][$field]['#type'] == 'hidden') {
           $output .= drupal_render($arg1['webform_nid'.$nid][$field]);
         } else {
           $title = $arg1['webform_nid'.$nid][$field]['#title'];
@@ -295,7 +319,7 @@ function uc_webform_pane_order_pane_callback($nid, $op, $arg1) {
       break;
       
     case 'edit-process':
-      _uc_webform_pane_save($nid, $arg1['order_id'], $arg1);
+      _uc_webform_pane_save($nid, $arg1['order_id'], $arg1['webform_nid'.$nid]);
       break;
   }
 }
@@ -307,7 +331,7 @@ function uc_webform_pane_order($op, &$arg1, $arg2) {
   switch ($op) {
     // Delete from the database.
     case 'delete':
-      include_once(drupal_get_path('module', 'webform') ."/webform_submissions.inc");
+      include_once(drupal_get_path('module', 'webform') ."/includes/webform.submissions.inc");
       $uc_wf_subs = db_query("SELECT nid, sid FROM {uc_webform_pane_submissions} WHERE order_id = %d", $arg1->order_id);
       while ($uc_wf_sub = db_fetch_object($uc_wf_subs)) {
         $node = node_load($uc_wf_sub->nid);
@@ -323,31 +347,40 @@ function uc_webform_pane_order($op, &$arg1, $arg2) {
  * Save pane values as webform submission through Webform submit handler.
  */ 
 function _uc_webform_pane_save($nid, $order_id, $values) {
-  // reset keys (remove "webform_" prefix) 
-  foreach ($values as $k => $v) {
-    if (substr($k, 0, 8) == 'webform_') {
-      $values[substr($k, 8)] = $v;
+  global $user;
+  $node = node_load($nid);
+  
+  // Filter out webform values (with the help of 'webform_'-prefixed fields)
+  foreach (array_keys($values) as $k) {
+    if (substr($k, 0, 8) == 'webform_' && webform_get_cid($node, substr($k, 8), 0)) {
+      unset($values[$k]);
     }
-    unset($values[$k]);
   }
   
   if ($sid = _uc_webform_pane_get_sid($nid, $order_id)) {
-    $formnode = node_load($nid);
-    foreach ($values as $form_key => $value) {
-      $cid = webform_get_cid($formnode, $form_key, 0);
-      $submitted[$cid] = $value;
-    }
-    include_once(drupal_get_path('module', 'webform') ."/webform_submissions.inc");
-    webform_submission_update($formnode, $sid, $submitted);
-  } else {
-    $form_values['op'] = t('Submit');
-    $form_values['submitted'] = $values;
-    $form_values['details']['nid'] = $nid;
-    
-    $form_state = array();
-    $form_state['values'] = $form_values;
-    webform_client_form_submit(NULL, $form_state);
-    
+    $form_values['details']['sid'] = $sid;
+  }
+  
+  $form_values['op'] = t('Submit');
+  $form_values['submitted'] = $values;
+  $form_values['details']['nid'] = $nid;
+  
+  $form_state = array();
+  $form_state['values'] = $form_values;
+  
+  // Perform post processing by components.
+  _webform_client_form_submit_process($node, $form_state['values']['submitted']);
+
+  // Flatten trees within the submission.
+  $form_state['values']['submitted_tree'] = $form_state['values']['submitted'];
+  $form_state['values']['submitted'] = _webform_client_form_submit_flatten($node, $form_state['values']['submitted']);
+
+  // Set a flag indicating processing should continue and be saved.
+  $form_state['webform_completed'] = TRUE;
+  
+  webform_client_form_submit(array('#node' => $node), $form_state);
+  
+  if (!$sid) {
     $sid = $form_state['values']['details']['sid'];
     db_query("INSERT INTO {uc_webform_pane_submissions} (nid, sid, order_id) VALUES (%d, %d, %d)", $nid, $sid, $order_id);
   }
@@ -365,7 +398,7 @@ function _uc_webform_pane_get_sid($nid, $order_id) {
  */ 
 function _uc_webform_pane_get_data($nid, $order_id) {
   if ($sid = _uc_webform_pane_get_sid($nid, $order_id)) {
-    include_once(drupal_get_path('module', 'webform') ."/webform_submissions.inc");
+    include_once(drupal_get_path('module', 'webform') ."/includes/webform.submissions.inc");
     return webform_get_submission($nid, $sid);    
   }
   $empty = new stdClass();
@@ -378,7 +411,7 @@ function _uc_webform_pane_get_data($nid, $order_id) {
 function _uc_webform_pane_get_nodes($join_type = 'INNER') {
   $webforms = array();
   
-  $q = db_query(db_rewrite_sql("SELECT n.nid, uc.nid AS uc_nid
+  $q = db_query(db_rewrite_sql("SELECT n.nid, n.title, uc.nid AS uc_nid
   FROM {node} n 
   $join_type JOIN {uc_webform_pane} uc ON (n.nid = uc.nid)
   WHERE n.type = 'webform' AND n.status = 1 ORDER BY n.title DESC"));
@@ -403,13 +436,11 @@ function _uc_webform_pane_render($nid, $order_id) {
   $output = array();
   foreach ($node->webform['components'] as $field) {
     if (isset($form[$field['form_key']]) && $field['type'] != 'hidden') {     
-      $view_function = '_webform_table_data_'. $field['type'];
-      if (function_exists($view_function)) {
-        $field_data = isset($data['data'][$field['cid']]) ? $data['data'][$field['cid']] : NULL;
-        $submission_output = $view_function($field_data, $field);
-        if ($submission_output !== NULL) {
-          $output[] = array('title' => $field['name'], 'data' => $submission_output);  
-        }
+      $field_data = isset($data['data'][$field['cid']]['value']) ? $data['data'][$field['cid']]['value'] : NULL;
+      $field_element = webform_component_invoke($field['type'], 'display', $field, $field_data);
+      $submission_output = theme($field_element['#theme'], $field_element);
+      if ($submission_output !== NULL) {
+        $output[] = array('title' => $field['name'], 'data' => $submission_output);  
       }
     }
   }
@@ -438,7 +469,7 @@ function theme_uc_webform_pane_order_view($data) {
 /**
  * Generate a form to edit webform submission data.
  */ 
-function _uc_webform_pane_edit_form($nid, $order_id) {
+function _uc_webform_pane_edit_form($nid, $order_id, $pane_type) {
   $node = node_load($nid);
   
   if (!$node->webform['components']) {
@@ -446,38 +477,17 @@ function _uc_webform_pane_edit_form($nid, $order_id) {
   }
   
   $form_state = array();
-  $form = webform_client_form($form_state, $node, NULL, TRUE);
+  $submission = _uc_webform_pane_get_data($nid, $order_id);
+  $form = webform_client_form($form_state, $node, $submission);
   $form = $form['submitted'];
   
-  unset($form['#tree']);
-  
-  // Assign default values to webform
-  if ($order_id) {
-    $data = get_object_vars(_uc_webform_pane_get_data($nid, $order_id));
-    foreach ($node->webform['components'] as $field) {
-      if (isset($form[$field['form_key']]) && isset($form[$field['form_key']]['#default_value'])) {
-        $default = $data['data'][$field['cid']]['value'];
-                
-        // options require safe key name
-        if (is_array($default) && (count($default) > 1 || in_array($form[$field['form_key']]['#type'], array('radios', 'select')))) {
-          $default = array_filter($default);
-          foreach($default as $optk => $optv) {
-            $default[$optk] = _webform_safe_name($optv);
-          }
-        }
-        
-        if (count($default) == 1) {
-          $default = $default[0];
-        }
-        $form[$field['form_key']]['#default_value'] = $default;
-      }
+  // Add an additional field to figure out which values are webform-values later
+  foreach (element_children($form) as $k) {
+    $form['webform_'.$k] = array('#type' => 'value', '#value' => $k);
+    $form[$k]["#validated"] = FALSE;
+    if ($pane_type == 'order') {
+      $form[$k]["#required"] = FALSE;
     }
-  }
-  
-  // Cannot begin with a number
-  foreach ($form as $k => $v) {
-    $form["webform_$k"] = $v;
-    unset($form[$k]);
   }
   
   return $form;
