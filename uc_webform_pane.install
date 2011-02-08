@@ -7,15 +7,7 @@
  */
 
 /**
- * Implementation of hook_install().
- */
-function uc_webform_pane_install() {
-  // Create tables.
-  drupal_install_schema('uc_webform_pane');
-}
-
-/**
- * Implementation of hook_schema().
+ * Implements hook_schema().
  */
 function uc_webform_pane_schema() {
   $schema['uc_webform_pane'] = array(
@@ -70,14 +62,6 @@ function uc_webform_pane_schema() {
 }
 
 /**
- * Implementation of hook_uninstall().
- */
-function uc_webform_pane_uninstall() {
-  // Remove tables.
-  drupal_uninstall_schema('uc_webform_pane');
-}
-
-/**
  * Add a new table to store webform submissions with related order ids.
  */
 function uc_webform_pane_update_6204() {
@@ -85,7 +69,7 @@ function uc_webform_pane_update_6204() {
 
   // Create the new table for storing submissions.
   if (!db_table_exists('uc_webform_pane_submissions')) {
-    db_create_table($ret, 'uc_webform_pane_submissions', array(
+    db_create_table('uc_webform_pane_submissions', array(
       'description' => 'Stores webform submissions with related order ids.',
       'fields' => array(
         'nid' => array(
@@ -116,7 +100,5 @@ function uc_webform_pane_update_6204() {
   }
 
   // Migrate old submissions to the new table.
-  $ret[] = update_sql("INSERT IGNORE INTO {uc_webform_pane_submissions} (nid, sid, order_id) SELECT w.nid, w.sid, w.data FROM {uc_webform_pane} p, {webform_submitted_data} w WHERE p.nid = w.nid AND p.cid_order_id = w.cid");
-
-  return $ret;
+  db_query("INSERT IGNORE INTO {uc_webform_pane_submissions} (nid, sid, order_id) SELECT w.nid, w.sid, w.data FROM {uc_webform_pane} p, {webform_submitted_data} w WHERE p.nid = w.nid AND p.cid_order_id = w.cid");
 }

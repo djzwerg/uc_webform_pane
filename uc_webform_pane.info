@@ -6,3 +6,6 @@ dependencies[] = uc_store
 dependencies[] = uc_cart
 dependencies[] = webform
 package = Ubercart - extra
+
+files[] = uc_webform_pane.install
+files[] = uc_webform_pane.module

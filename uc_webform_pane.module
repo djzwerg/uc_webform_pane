@@ -3,26 +3,25 @@
 
 /**
  * @file uc_webform_pane.module
- *
- * Ubercart Webform Checkout Panes.
+ * Ubercart Webform Checkout Panes module.
  *
  * @note Ubercart webform data is stored in database during checkout, even when order is not complete.
  */
 
 /**
- * Implementation of hook_init().
+ * Implements hook_init().
  */
 function uc_webform_pane_init() {
   drupal_add_css(drupal_get_path('module', 'uc_webform_pane') . '/uc_webform_pane.css');
 }
 
 /**
- * Implementation of hook_theme().
+ * Implements hook_theme().
  */
 function uc_webform_pane_theme() {
   $theme = array(
     'uc_webform_pane_order_view' => array(
-      'arguments' => array('data' => NULL),
+      'variables' => array('data' => NULL),
     ),
   );
 
@@ -30,7 +29,7 @@ function uc_webform_pane_theme() {
 }
 
 /**
- * Implementation of hook_form_alter().
+ * Implements hook_form_alter().
  */
 function uc_webform_pane_form_alter(&$form, &$form_state, $form_id) {
 
@@ -77,8 +76,8 @@ function uc_webform_pane_form_alter(&$form, &$form_state, $form_id) {
 function uc_webform_pane_webform_validation_validate($form, &$form_state) {
   $panes = $form_state['values']['panes'];
   foreach ($panes as $paneid => $values) {
-    if (substr($paneid, 0, 11) == 'webform_nid') {
-      $nid = substr($paneid, 11);
+    if (drupal_substr($paneid, 0, 11) == 'webform_nid') {
+      $nid = drupal_substr($paneid, 11);
 
       $pane_values = array();
       $pane_values['op'] = t('Submit');
@@ -107,27 +106,34 @@ function uc_webform_pane_access_validate($form, &$form_state) {
  */
 function uc_webform_pane_webform_configure_form_submit($form, &$form_state) {
   if ($form_state['values']['uc_webform_pane']) {
-    db_query("INSERT IGNORE INTO {uc_webform_pane} (nid) VALUES (%d)", $form_state['values']['nid']);
+    db_merge('uc_webform_pane')
+      ->key(array('nid' => $form_state['values']['nid']))
+      ->execute();
   }
   else {
-    db_query("DELETE FROM {uc_webform_pane} WHERE nid = %d", $form_state['values']['nid']);
+    db_delete('uc_webform_pane')
+      ->condition('nid', $form_state['values']['nid'])
+      ->execute();
   }
 }
 
 /**
- * Implementation of hook_nodeapi().
+ * Implements hook_node_prepare().
  */
-function uc_webform_pane_nodeapi(&$node, $op, $a3 = NULL, $a4 = NUL) {
-  if ($node->type === 'webform') {
-    switch ($op) {
-      case 'load':
-        $node->webform['uc_webform_pane'] = uc_webform_pane_nodestatus($node->nid);
-        break;
+function uc_webform_pane_node_prepare($node) {
+  if ($node->type == 'webform') {
+    $node->webform['uc_webform_pane'] = uc_webform_pane_nodestatus($node->nid);
+  }
+}
 
-      case 'delete':
-        db_query("DELETE FROM {uc_webform_pane} WHERE nid = %d", $node->nid);
-        break;
-    }
+/**
+ * Implements hook_node_delete().
+ */
+function uc_webform_pane_node_delete($node) {
+  if ($node->type == 'webform') {
+    db_delete('uc_webform_pane')
+      ->condition('nid', $node->nid)
+      ->execute();
   }
 }
 
@@ -135,12 +141,16 @@ function uc_webform_pane_nodeapi(&$node, $op, $a3 = NULL, $a4 = NUL) {
  * Check if a webform node should be selectable as a checkout pane.
  */
 function uc_webform_pane_nodestatus($nid) {
-  $found = db_result(db_query("SELECT nid FROM {uc_webform_pane} WHERE nid = %d", $nid));
+  $found = db_select('uc_webform_pane', 'uwp')
+    ->fields('uwp', 'nid')
+    ->condition('nid', $nid)
+    ->fetchField();
+
   return $found ? TRUE : FALSE;
 }
 
 /**
- * Implementation of hook_token_values().
+ * Implements hook_token_values().
  */
 function uc_webform_pane_token_values($type, $object = NULL) {
   $values = array();
@@ -154,7 +164,7 @@ function uc_webform_pane_token_values($type, $object = NULL) {
         foreach ($node->webform['components'] as $field) {
           $field_data = isset($data['data'][$field['cid']]['value']) ? $data['data'][$field['cid']]['value'] : NULL;
           $field_element = webform_component_invoke($field['type'], 'display', $field, $field_data);
-          $submission_output = theme($field_element['#theme'], $field_element);
+          $submission_output = theme($field_element['#theme'], array('element' => $field_element));
           $values['uc-webform-' . $nid . '-' . str_replace('_', '-', $field['form_key'])] = $submission_output;
         }
       }
@@ -164,7 +174,7 @@ function uc_webform_pane_token_values($type, $object = NULL) {
 }
 
 /**
- * Implementation of hook_token_list().
+ * Implements hook_token_list().
  */
 function uc_webform_pane_token_list($type = 'all') {
   $tokens = array();
@@ -183,7 +193,7 @@ function uc_webform_pane_token_list($type = 'all') {
 }
 
 /**
- * Implementation of hook_checkout_pane().
+ * Implements hook_checkout_pane().
  */
 function uc_webform_pane_checkout_pane() {
   $webforms = _uc_webform_pane_get_nodes();
@@ -245,7 +255,7 @@ function uc_webform_pane_checkout_pane_callback($nid, $op, &$arg1, $arg2) {
 }
 
 /**
- * Implementation of hook_order_pane().
+ * Implements hook_order_pane().
  */
 function uc_webform_pane_order_pane() {
   $webforms = _uc_webform_pane_get_nodes();
@@ -283,7 +293,7 @@ function uc_webform_pane_order_pane_callback($nid, $op, $arg1) {
     case 'view':
     case 'customer':
       $data = _uc_webform_pane_render($nid, $arg1->order_id);
-      return theme('uc_webform_pane_order_view', $data);
+      return theme('uc_webform_pane_order_view', array('data' => $data));
       break;
 
     case 'edit-form':
@@ -307,7 +317,7 @@ function uc_webform_pane_order_pane_callback($nid, $op, $arg1) {
         if ($arg1['webform_nid' . $nid][$field]['#type'] == 'value') {
           continue;
         }
-        else if ($arg1['webform_nid' . $nid][$field]['#type'] == 'hidden') {
+        elseif ($arg1['webform_nid' . $nid][$field]['#type'] == 'hidden') {
           $output .= drupal_render($arg1['webform_nid' . $nid][$field]);
         }
         else {
@@ -328,20 +338,25 @@ function uc_webform_pane_order_pane_callback($nid, $op, $arg1) {
 }
 
 /**
- * Implementation of hook_order().
+ * Implements hook_order().
  */
 function uc_webform_pane_order($op, &$arg1, $arg2) {
   switch ($op) {
     // Delete from the database.
     case 'delete':
-      include_once(drupal_get_path('module', 'webform') . "/includes/webform.submissions.inc");
-      $uc_wf_subs = db_query("SELECT nid, sid FROM {uc_webform_pane_submissions} WHERE order_id = %d", $arg1->order_id);
+      include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'webform') . "/includes/webform.submissions.inc";
+      $uc_wf_subs = db_select('uc_webform_pane_submissions', 'uwps')
+        ->fields('uwps', array('nid', 'sid'))
+        ->condition('order_id', $arg1->order_id)
+        ->execute();
       while ($uc_wf_sub = db_fetch_object($uc_wf_subs)) {
         $node = node_load($uc_wf_sub->nid);
         $submission = webform_get_submission($uc_wf_sub->nid, $uc_wf_sub->sid);
         webform_submission_delete($node, $submission);
       }
-      db_query("DELETE FROM {uc_webform_pane_submissions} WHERE order_id = %d", $arg1->order_id);
+      db_delete('uc_webform_pane_submissions')
+        ->condition('order_id', $arg1->order_id)
+        ->execute();
       break;
   }
 }
@@ -355,7 +370,7 @@ function _uc_webform_pane_save($nid, $order_id, $values) {
 
   // Filter out webform values (with the help of 'webform_'-prefixed fields)
   foreach (array_keys($values) as $k) {
-    if (substr($k, 0, 8) == 'webform_' && webform_get_cid($node, substr($k, 8), 0)) {
+    if (drupal_substr($k, 0, 8) == 'webform_' && webform_get_cid($node, drupal_substr($k, 8), 0)) {
       unset($values[$k]);
     }
   }
@@ -385,7 +400,13 @@ function _uc_webform_pane_save($nid, $order_id, $values) {
 
   if (!$sid) {
     $sid = $form_state['values']['details']['sid'];
-    db_query("INSERT INTO {uc_webform_pane_submissions} (nid, sid, order_id) VALUES (%d, %d, %d)", $nid, $sid, $order_id);
+    db_insert('uc_webform_pane_submissions')
+      ->fields(array(
+          'nid' => $nid,
+          'sid' => $sid,
+          'order_id' => $order_id,
+        ))
+      ->execute();
   }
 }
 
@@ -393,7 +414,11 @@ function _uc_webform_pane_save($nid, $order_id, $values) {
  * Return webform submission id.
  */
 function _uc_webform_pane_get_sid($nid, $order_id) {
-  return db_result(db_query("SELECT sid FROM {uc_webform_pane_submissions} WHERE nid = %d AND order_id = %d", $nid, $order_id));
+  return db_select('uc_webform_pane_submissions', 'uwps')
+    ->fields('uwps', 'sid')
+    ->condition('nid', $nid)
+    ->condition('order_id', $order_id)
+    ->fetchField();
 }
 
 /**
@@ -401,7 +426,7 @@ function _uc_webform_pane_get_sid($nid, $order_id) {
  */
 function _uc_webform_pane_get_data($nid, $order_id) {
   if ($sid = _uc_webform_pane_get_sid($nid, $order_id)) {
-    include_once(drupal_get_path('module', 'webform') . "/includes/webform.submissions.inc");
+    include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'webform') . "/includes/webform.submissions.inc";
     return webform_get_submission($nid, $sid);
   }
   $empty = new stdClass();
@@ -414,11 +439,21 @@ function _uc_webform_pane_get_data($nid, $order_id) {
 function _uc_webform_pane_get_nodes($join_type = 'INNER') {
   $webforms = array();
 
-  $q = db_query(db_rewrite_sql("SELECT n.nid, n.title, uc.nid AS uc_nid
-  FROM {node} n 
-  $join_type JOIN {uc_webform_pane} uc ON (n.nid = uc.nid)
-  WHERE n.type = 'webform' AND n.status = 1 ORDER BY n.title DESC"));
-  while ($webform = db_fetch_object($q)) {
+  $query = db_select('node', 'n')
+    ->fields('n', 'nid')
+    ->condition('type', 'webform')
+    ->condition('status', 1)
+    ->orderBy('title', 'DESC');
+
+  if ($join_type == 'LEFT') {
+    $query->leftjoin('uc_webform_pane', 'uwp', 'n.nid = uwp.nid');
+  }
+  else {
+    $query->join('uc_webform_pane', 'uwp', 'n.nid = uwp.nid');
+  }
+
+  $rs = $query->execute();
+  while ($webform = db_fetch_object($rs)) {
     $webforms[] = $webform;
   }
 
@@ -441,7 +476,7 @@ function _uc_webform_pane_render($nid, $order_id) {
     if (isset($form[$field['form_key']]) && $field['type'] != 'hidden') {
       $field_data = isset($data['data'][$field['cid']]['value']) ? $data['data'][$field['cid']]['value'] : NULL;
       $field_element = webform_component_invoke($field['type'], 'display', $field, $field_data);
-      $submission_output = theme($field_element['#theme'], $field_element);
+      $submission_output = theme($field_element['#theme'], array('element' => $field_element));
       if ($submission_output !== NULL) {
         $output[] = array(
           'title' => $field['name'],
@@ -457,7 +492,8 @@ function _uc_webform_pane_render($nid, $order_id) {
 /**
  * Theme webform submission data on the order view page.
  */
-function theme_uc_webform_pane_order_view($data) {
+function theme_uc_webform_pane_order_view($variables) {
+  $data = $variables['data'];
   $output = '<table>';
   foreach ($data as $row) {
     $border = '';
