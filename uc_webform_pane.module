@@ -87,7 +87,7 @@ function uc_webform_pane_webform_validation_validate($form, &$form_state) {
       $pane_state = array();
       $pane_state['values'] = $pane_values;
 
-      webform_validation_validate($form, &$pane_state);
+      webform_validation_validate($form, $pane_state);
     }
   }
 }
