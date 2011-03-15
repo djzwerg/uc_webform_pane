@@ -239,7 +239,7 @@ function uc_webform_pane_uc_checkout_pane_callback($nid, $op, $order, $form = NU
       );
       break;
     case 'process':
-      _uc_webform_pane_save($nid, $order->order_id, $form_state); // save to database
+      _uc_webform_pane_save($nid, $order->order_id, $form_state['input']['panes']['webform_nid' . $nid]); // save to database
       return TRUE;
       break;
     case 'review':
@@ -264,7 +264,7 @@ function uc_webform_pane_uc_order_pane() {
 
     // Dynamically create callback function
     if (!function_exists($funcname)) {
-      eval('function ' . $funcname . '($op, $order, $form = NULL, &$form_state = NULL) { return uc_webform_pane_uc_order_pane_callback(' . $nid . ', $op, $order, $form, $form_state); } ');
+      eval('function ' . $funcname . '($op, $order, &$form = NULL, &$form_state = NULL) { return uc_webform_pane_uc_order_pane_callback(' . $nid . ', $op, $order, $form, $form_state); } ');
     }
 
     $node = node_load($nid);
@@ -284,8 +284,7 @@ function uc_webform_pane_uc_order_pane() {
 /**
  * Order Pane callback for dynamic order callback function.
  */
-function uc_webform_pane_uc_order_pane_callback($nid, $op, $order, $form = NULL, &$form_state = NULL) {
-  
+function uc_webform_pane_uc_order_pane_callback($nid, $op, $order, &$form = NULL, &$form_state = NULL) {
   switch ($op) {
     case 'view':
     case 'customer':
@@ -309,25 +308,25 @@ function uc_webform_pane_uc_order_pane_callback($nid, $op, $order, $form = NULL,
 
     case 'edit-theme':
       $output = '<div id="webform-' . $nid . '-select"></div><table class="uc-webform-edit-table">';
-      foreach (element_children($order['webform_nid' . $nid]) as $field) {
-        if ($order['webform_nid' . $nid][$field]['#type'] == 'value') {
+      foreach (element_children($form['webform_nid' . $nid]) as $field) {
+        if ($form['webform_nid' . $nid][$field]['#type'] == 'value') {
           continue;
         }
-        elseif ($order['webform_nid' . $nid][$field]['#type'] == 'hidden') {
-          $output .= drupal_render($order['webform_nid' . $nid][$field]);
+        elseif ($form['webform_nid' . $nid][$field]['#type'] == 'hidden') {
+          $output .= drupal_render($form['webform_nid' . $nid][$field]);
         }
         else {
-          $title = $order['webform_nid' . $nid][$field]['#title'];
-          $order['webform_nid' . $nid][$field]['#title'] = NULL;
+          $title = $form['webform_nid' . $nid][$field]['#title'];
+          $form['webform_nid' . $nid][$field]['#title'] = NULL;
           $output .= '<tr><td class="uwet-label">' . $title . ':</td><td>'
-                   . drupal_render($order['webform_nid' . $nid][$field]) . '</td></tr>';
+                   . drupal_render($form['webform_nid' . $nid][$field]) . '</td></tr>';
         }
       }
       $output .= '</table>';
       return $output;
 
     case 'edit-process':
-      _uc_webform_pane_save($nid, $order['order_id'], $order['webform_nid' . $nid]);
+      _uc_webform_pane_save($nid, $order->order_id, $form_state['input']['webform_nid' . $nid]);
       break;
   }
 }
@@ -359,36 +358,36 @@ function uc_webform_pane_uc_order($op, &$order, $arg2) {
 /**
  * Save pane values as webform submission through Webform submit handler.
  */
-function _uc_webform_pane_save($nid, $order_id, $form_state) {
+function _uc_webform_pane_save($nid, $order_id, $submitted) {
   global $user;
   $node = node_load($nid);
 
   if ($sid = _uc_webform_pane_get_sid($nid, $order_id)) {
-    $form_values['details']['sid'] = $sid;
+    $values['details']['sid'] = $sid;
   }
 
-  $form_values['op'] = t('Submit');
-  $form_values['submitted'] = $form_state['input']['panes']['webform_nid' . $nid];
-  $form_values['details']['nid'] = $nid;
-  $form_values['details']['finished'] = FALSE;
+  $values['op'] = t('Submit');
+  $values['submitted'] = $submitted;
+  $values['details']['nid'] = $nid;
+  $values['details']['finished'] = FALSE;
 
-  $form_state_wf = array();
-  $form_state_wf['values'] = $form_values;
+  $form_state = array();
+  $form_state['values'] = $values;
 
   // Perform post processing by components.
-  _webform_client_form_submit_process($node, $form_state_wf['values']['submitted']);
+  _webform_client_form_submit_process($node, $form_state['values']['submitted']);
 
   // Flatten trees within the submission.
-  $form_state_wf['values']['submitted_tree'] = $form_state_wf['values']['submitted'];
-  $form_state_wf['values']['submitted'] = _webform_client_form_submit_flatten($node, $form_state_wf['values']['submitted']);
+  $form_state['values']['submitted_tree'] = $form_state['values']['submitted'];
+  $form_state['values']['submitted'] = _webform_client_form_submit_flatten($node, $form_state['values']['submitted']);
 
   // Set a flag indicating processing should continue and be saved.
-  $form_state_wf['webform_completed'] = TRUE;
+  $form_state['webform_completed'] = TRUE;
 
-  webform_client_form_submit(array('#node' => $node), $form_state_wf);
+  webform_client_form_submit(array('#node' => $node), $form_state);
 
   if (!$sid) {
-    $sid = $form_state_wf['values']['details']['sid'];
+    $sid = $form_state['values']['details']['sid'];
     db_insert('uc_webform_pane_submissions')
       ->fields(array(
           'nid' => $nid,
