@@ -239,7 +239,7 @@ function uc_webform_pane_uc_checkout_pane_callback($nid, $op, $order, $form = NU
       );
       break;
     case 'process':
-      _uc_webform_pane_save($nid, $order->order_id, $form_state['input']['panes']['webform_nid' . $nid]); // save to database
+      _uc_webform_pane_save($nid, $order->order_id, $form_state['values']['panes']['webform_nid' . $nid]); // save to database
       return TRUE;
       break;
     case 'review':
@@ -309,10 +309,10 @@ function uc_webform_pane_uc_order_pane_callback($nid, $op, $order, &$form = NULL
     case 'edit-theme':
       $output = '<div id="webform-' . $nid . '-select"></div><table class="uc-webform-edit-table">';
       foreach (element_children($form['webform_nid' . $nid]) as $field) {
-        if ($form['webform_nid' . $nid][$field]['#type'] == 'value') {
+        if (isset($form['webform_nid' . $nid][$field]['#type']) && $form['webform_nid' . $nid][$field]['#type'] == 'value') {
           continue;
         }
-        elseif ($form['webform_nid' . $nid][$field]['#type'] == 'hidden') {
+        elseif (isset($form['webform_nid' . $nid][$field]['#type']) && $form['webform_nid' . $nid][$field]['#type'] == 'hidden') {
           $output .= drupal_render($form['webform_nid' . $nid][$field]);
         }
         else {
@@ -361,6 +361,13 @@ function uc_webform_pane_uc_order($op, &$order, $arg2) {
 function _uc_webform_pane_save($nid, $order_id, $submitted) {
   global $user;
   $node = node_load($nid);
+  
+  // Filter out webform values (with the help of 'webform_'-prefixed fields)
+  foreach (array_keys($submitted) as $k) {
+    if (substr($k, 0, 8) == 'webform_' && webform_get_cid($node, substr($k, 8), 0)) {
+      unset($submitted[$k]);
+    }
+  }
 
   if ($sid = _uc_webform_pane_get_sid($nid, $order_id)) {
     $values['details']['sid'] = $sid;
