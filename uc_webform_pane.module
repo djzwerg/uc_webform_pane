@@ -302,6 +302,10 @@ function uc_webform_pane_uc_order_pane_callback($nid, $op, $order, &$form = NULL
         '#collapsed' => FALSE,
       );
       foreach ($webform as $field_id => $field_settings) {
+        if (isset($field_settings['#webform_component']['type'])) {
+          $field_settings['#process'][] = '_uc_webform_pane_component_include' ;
+          $field_settings['#process'] = array_reverse($field_settings['#process']);
+        }
         $form['webform_nid' . $nid][$field_id] = $field_settings;
       }
       return $form;
@@ -534,4 +538,12 @@ function _uc_webform_pane_edit_form($nid, $order_id, $pane_type) {
   }
 
   return $form;
+}
+
+/**
+ * Load the Webform component so that it could be properly processed on form submission.
+ */
+function _uc_webform_pane_component_include($element) {
+  webform_component_include($element['#webform_component']['type']);
+  return $element;
 }
