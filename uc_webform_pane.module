@@ -303,7 +303,7 @@ function uc_webform_pane_uc_order_pane_callback($nid, $op, $order, &$form = NULL
       );
       foreach ($webform as $field_id => $field_settings) {
         if (isset($field_settings['#webform_component']['type'])) {
-          $field_settings['#process'][] = '_uc_webform_pane_component_include' ;
+          $field_settings['#process'][] = '_uc_webform_pane_component_include';
           $field_settings['#process'] = array_reverse($field_settings['#process']);
         }
         $form['webform_nid' . $nid][$field_id] = $field_settings;
@@ -365,13 +365,6 @@ function uc_webform_pane_uc_order($op, &$order, $arg2) {
 function _uc_webform_pane_save($nid, $order_id, $submitted) {
   global $user;
   $node = node_load($nid);
-  
-  // Filter out webform values (with the help of 'webform_'-prefixed fields)
-  foreach (array_keys($submitted) as $k) {
-    if (substr($k, 0, 8) == 'webform_' && webform_get_cid($node, substr($k, 8), 0)) {
-      unset($submitted[$k]);
-    }
-  }
 
   if ($sid = _uc_webform_pane_get_sid($nid, $order_id)) {
     $values['details']['sid'] = $sid;
@@ -525,13 +518,11 @@ function _uc_webform_pane_edit_form($nid, $order_id, $pane_type) {
   $form = webform_client_form($form, $form_state, $node, $submission);
   $form = $form['submitted'];
 
-  // Add an additional field to figure out which values are webform-values later
+  // Make sure all the fields are validated appropriately
   foreach (element_children($form) as $k) {
-    $form['webform_' . $k] = array(
-      '#type' => 'value',
-      '#value' => $k,
-    );
     $form[$k]["#validated"] = FALSE;
+    $form[$k]['#process'][] = '_uc_webform_pane_component_include';
+    $form[$k]['#process'] = array_reverse($form[$k]['#process']);
     if ($pane_type == 'order') {
       $form[$k]["#required"] = FALSE;
     }
@@ -544,6 +535,8 @@ function _uc_webform_pane_edit_form($nid, $order_id, $pane_type) {
  * Load the Webform component so that it could be properly processed on form submission.
  */
 function _uc_webform_pane_component_include($element) {
-  webform_component_include($element['#webform_component']['type']);
+  if (isset($element['#webform_component']['type'])) {
+    webform_component_include($element['#webform_component']['type']);
+  }
   return $element;
 }
