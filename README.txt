@@ -34,7 +34,7 @@ Usage
  checkout pane' setting in the 'Advanced settings' fieldset which usually appears in collapsed mode at the bottom of
  the page. (See also the 'Permissions' section below for more details on the accessibility of the mentioned setting).
  
- * The selected webforms will now be listed under admin/store/settings/checkout/edit/panes where you can enable,
+ * The selected webforms will now be listed under admin/store/settings/checkout/panes where you can enable,
  disable and move around checkout panes. These act as normal Ubercart panes from here on in.
  
  * You can view/edit webform submissions relevant to the orders in your store directly through the orders, no need
