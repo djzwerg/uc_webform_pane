@@ -1,6 +1,6 @@
--------------------------------
-Ubercart Webform Checkout Panes
--------------------------------
+------------------------------
+Ubercart Webform Checkout Pane
+------------------------------
 
 Originally provided by Jonah Ellison
 Maintained by Martin B. - martin@webscio.net
