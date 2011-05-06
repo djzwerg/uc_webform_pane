@@ -521,8 +521,10 @@ function _uc_webform_pane_edit_form($nid, $order_id, $pane_type) {
   // Make sure all the fields are validated appropriately
   foreach (element_children($form) as $k) {
     $form[$k]["#validated"] = FALSE;
-    $form[$k]['#process'][] = '_uc_webform_pane_component_include';
-    $form[$k]['#process'] = array_reverse($form[$k]['#process']);
+    if (isset($form[$k]["#type"]) && $form[$k]["#type"] != 'select') {
+      $form[$k]['#process'][] = '_uc_webform_pane_component_include';
+      $form[$k]['#process'] = array_reverse($form[$k]['#process']);
+    }
     if ($pane_type == 'order') {
       $form[$k]["#required"] = FALSE;
     }
