@@ -251,6 +251,29 @@ function uc_webform_pane_uc_checkout_pane_callback($nid, $op, $order, $form = NU
 }
 
 /**
+ * Implements of drupal_alter('uc_checkout_pane', $panes).
+ */
+function uc_webform_pane_uc_checkout_pane_alter(&$panes) {
+  // Validate all the webform panes individually during the checkout process
+  foreach ($panes as $pid => $pane) {
+    if (drupal_substr($pane['id'], 0, 11) == 'webform_nid') {
+      $nid = drupal_substr($pane['id'], 11);
+      $node = node_load($nid);
+
+      // Check if the webform submission limit has already been reached
+      if ($node->webform['submit_limit'] != -1) {
+        include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'webform') . "/includes/webform.submissions.inc";
+
+        global $user;
+        if (_webform_submission_limit_check($node) && ($user->uid != 0 || variable_get('cache', 0) == 0)) {
+          $panes[$pid]['enabled'] = FALSE;
+        }
+      }
+    }
+  }
+}
+
+/**
  * Implements hook_uc_order_pane().
  */
 function uc_webform_pane_uc_order_pane() {
