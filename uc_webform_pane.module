@@ -183,7 +183,6 @@ function uc_webform_pane_token_list($type = 'all') {
     foreach ($webforms as $webform) {
       $nid = $webform->nid;
       $node = node_load($nid);
-      $data = get_object_vars(_uc_webform_pane_get_data($nid, $object->order_id));
       foreach ($node->webform['components'] as $field) {
         $tokens['order']['uc-webform-' . $nid . '-' . str_replace('_', '-', $field['form_key'])] = $node->title . ': ' . $field['name'];
       }
