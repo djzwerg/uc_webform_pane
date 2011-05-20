@@ -523,6 +523,7 @@ function theme_uc_webform_pane_order_view($variables) {
  */
 function _uc_webform_pane_edit_form($nid, $order_id, $pane_type) {
   drupal_add_css(drupal_get_path('module', 'webform') . '/css/webform.css');
+  drupal_add_js(drupal_get_path('module', 'webform') . '/js/webform.js');
 
   $node = node_load($nid);
 
