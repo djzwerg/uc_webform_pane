@@ -8,13 +8,6 @@
  */
 
 /**
- * Implements hook_init().
- */
-function uc_webform_pane_init() {
-  drupal_add_css(drupal_get_path('module', 'uc_webform_pane') . '/uc_webform_pane.css');
-}
-
-/**
  * Implements hook_theme().
  */
 function uc_webform_pane_theme() {
@@ -333,6 +326,7 @@ function uc_webform_pane_uc_order_pane_callback($nid, $op, $order, &$form = NULL
       return $form;
 
     case 'edit-theme':
+      drupal_add_css(drupal_get_path('module', 'uc_webform_pane') . '/uc_webform_pane.css');
       $output = '<div id="webform-' . $nid . '-select"></div><table class="uc-webform-edit-table">';
       foreach (element_children($form['webform_nid' . $nid]) as $field) {
         if (isset($form['webform_nid' . $nid][$field]['#type']) && $form['webform_nid' . $nid][$field]['#type'] == 'value') {
@@ -528,6 +522,8 @@ function theme_uc_webform_pane_order_view($variables) {
  * Generate a form to edit webform submission data.
  */
 function _uc_webform_pane_edit_form($nid, $order_id, $pane_type) {
+  drupal_add_css(drupal_get_path('module', 'webform') . '/css/webform.css');
+
   $node = node_load($nid);
 
   if (!$node->webform['components']) {
