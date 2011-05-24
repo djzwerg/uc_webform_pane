@@ -4,7 +4,7 @@
  * @file uc_webform_pane.module
  * Ubercart Webform Checkout Panes module.
  *
- * @note Webform data will be stored in database during checkout, even when order is not complete.
+ * @note Ubercart webform data is stored in database during checkout, even when order is not complete.
  */
 
 /**
@@ -143,45 +143,70 @@ function uc_webform_pane_nodestatus($nid) {
 }
 
 /**
- * Implements hook_token_values().
+ * Implements hook_token_info().
  */
-function uc_webform_pane_token_values($type, $object = NULL) {
-  $values = array();
-  switch ($type) {
-    case 'order':
-      $webforms = _uc_webform_pane_get_nodes();
-      foreach ($webforms as $webform) {
-        $nid = $webform->nid;
-        $node = node_load($nid);
-        $data = get_object_vars(_uc_webform_pane_get_data($nid, $object->order_id));
-        foreach ($node->webform['components'] as $field) {
-          $field_data = isset($data['data'][$field['cid']]['value']) ? $data['data'][$field['cid']]['value'] : NULL;
-          $field_element = webform_component_invoke($field['type'], 'display', $field, $field_data);
-          $submission_output = theme($field_element['#theme'], array('element' => $field_element));
-          $values['uc-webform-' . $nid . '-' . str_replace('_', '-', $field['form_key'])] = $submission_output;
-        }
-      }
-      break;
+function uc_webform_pane_token_info() {
+  $types = array();
+  $tokens = array();
+
+  $webforms = _uc_webform_pane_get_nodes();
+  foreach ($webforms as $webform) {
+    $nid = $webform->nid;
+    $node = node_load($nid);
+
+    $type = array(
+      'name' => $node->title,
+      'description' => t('Webform tokens.'),
+      'needs-data' => 'ucwf_' . $nid,
+    );
+
+    $info = array();
+    foreach ($node->webform['components'] as $field) {
+      $info['uc-webform-' . $nid . '-' . str_replace('_', '-', $field['form_key'])] = array(
+        'name' => $field['name'],
+        'description' => '',
+      );
+    }
+
+    $types['ucwf_' . $nid] = $type;
+    $tokens['ucwf_' . $nid] = $info;
+    $tokens['uc_order']['ucwf_' . $nid] = array(
+      'name' => $node->title,
+      'description' => t('Webform tokens.'),
+      'type' => 'ucwf_' . $nid
+    );
   }
-  return $values;
+
+  return array(
+    'types' => $types,
+    'tokens' => $tokens,
+  );
 }
 
 /**
- * Implements hook_token_list().
+ * Implements hook_tokens().
  */
-function uc_webform_pane_token_list($type = 'all') {
-  $tokens = array();
-  if ($type == 'order' || $type == 'ubercart' || $type == 'all') {
+function uc_webform_pane_tokens($type, $tokens, $data = array(), $options = array()) {
+  $values = array();
+
+  if ($type == 'uc_order' && !empty($data['uc_order'])) {
+    $order = $data['uc_order'];
+
     $webforms = _uc_webform_pane_get_nodes();
     foreach ($webforms as $webform) {
       $nid = $webform->nid;
       $node = node_load($nid);
+      $data = get_object_vars(_uc_webform_pane_get_data($nid, $order->order_id));
       foreach ($node->webform['components'] as $field) {
-        $tokens['order']['uc-webform-' . $nid . '-' . str_replace('_', '-', $field['form_key'])] = $node->title . ': ' . $field['name'];
+        $field_data = isset($data['data'][$field['cid']]['value']) ? $data['data'][$field['cid']]['value'] : NULL;
+        $field_element = webform_component_invoke($field['type'], 'display', $field, $field_data);
+        $submission_output = theme($field_element['#theme'], array('element' => $field_element));
+        $values['uc-webform-' . $nid . '-' . str_replace('_', '-', $field['form_key'])] = $submission_output;
       }
     }
   }
-  return $tokens;
+
+  return $values;
 }
 
 /**
