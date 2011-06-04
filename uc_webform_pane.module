@@ -162,6 +162,9 @@ function uc_webform_pane_token_info() {
 
     $info = array();
     foreach ($node->webform['components'] as $field) {
+      if ($field['type'] == 'markup') {
+        continue;
+      }
       $info['uc-webform-' . $nid . '-' . str_replace('_', '-', $field['form_key'])] = array(
         'name' => $field['name'],
         'description' => '',
@@ -198,6 +201,9 @@ function uc_webform_pane_tokens($type, $tokens, $data = array(), $options = arra
       $node = node_load($nid);
       $data = get_object_vars(_uc_webform_pane_get_data($nid, $order->order_id));
       foreach ($node->webform['components'] as $field) {
+        if ($field['type'] == 'markup') {
+          continue;
+        }
         $field_data = isset($data['data'][$field['cid']]['value']) ? $data['data'][$field['cid']]['value'] : NULL;
         $field_element = webform_component_invoke($field['type'], 'display', $field, $field_data);
         $submission_output = theme($field_element['#theme'], array('element' => $field_element));
@@ -499,15 +505,10 @@ function _uc_webform_pane_get_nodes($join_type = 'INNER') {
 function _uc_webform_pane_render($nid, $order_id) {
   $node = node_load($nid);
 
-  $form = array();
-  $form_state = array();
-  $form = webform_client_form($form, $form_state, $node, NULL);
-  $form = $form['submitted'];
-
   $data = get_object_vars(_uc_webform_pane_get_data($nid, $order_id));
   $output = array();
   foreach ($node->webform['components'] as $field) {
-    if (isset($form[$field['form_key']]) && !in_array($field['type'], array('hidden', 'markup'))) {
+    if (!in_array($field['type'], array('hidden', 'markup'))) {
       $field_data = isset($data['data'][$field['cid']]['value']) ? $data['data'][$field['cid']]['value'] : NULL;
       $field_element = webform_component_invoke($field['type'], 'display', $field, $field_data);
       $submission_output = theme($field_element['#theme'], array('element' => $field_element));
