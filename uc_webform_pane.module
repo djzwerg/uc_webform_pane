@@ -404,7 +404,6 @@ function uc_webform_pane_uc_order($op, &$order, $arg2) {
  * Save pane values as webform submission through Webform submit handler.
  */
 function _uc_webform_pane_save($nid, $order_id, $submitted) {
-  global $user;
   $node = node_load($nid);
 
   if ($sid = _uc_webform_pane_get_sid($nid, $order_id)) {
@@ -412,7 +411,7 @@ function _uc_webform_pane_save($nid, $order_id, $submitted) {
   }
 
   $values['op'] = t('Submit');
-  $values['submitted'] = $submitted;
+  $values['submitted'] = array_filter($submitted);
   $values['details']['nid'] = $nid;
   $values['details']['finished'] = FALSE;
 
