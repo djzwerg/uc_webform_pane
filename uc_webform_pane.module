@@ -24,6 +24,7 @@ function uc_webform_pane_theme() {
  * Implements hook_form_alter().
  */
 function uc_webform_pane_form_alter(&$form, &$form_state, $form_id) {
+  global $user;
 
   // Make sure the webform form supports files.
   if ($form_id == 'uc_cart_checkout_form') {
@@ -52,7 +53,6 @@ function uc_webform_pane_form_alter(&$form, &$form_state, $form_id) {
   if (preg_match('|webform_.*_form|', $form_id)) {
     $nid = arg(1);
     if (uc_webform_pane_nodestatus($nid)) {
-      global $user;
       $form['uc_access'] = array(
         '#type' => 'hidden',
         '#value' => user_access('administer store', $user) ? '1' : '0',
@@ -277,6 +277,8 @@ function uc_webform_pane_uc_checkout_pane_callback($nid, $op, $order, $form = NU
  * Implements of drupal_alter('uc_checkout_pane', $panes).
  */
 function uc_webform_pane_uc_checkout_pane_alter(&$panes) {
+  global $user;
+
   // Validate all the webform panes individually during the checkout process
   foreach ($panes as $pid => $pane) {
     if (drupal_substr($pane['id'], 0, 11) == 'webform_nid') {
@@ -287,7 +289,6 @@ function uc_webform_pane_uc_checkout_pane_alter(&$panes) {
       if ($node->webform['submit_limit'] != -1) {
         include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'webform') . "/includes/webform.submissions.inc";
 
-        global $user;
         if (_webform_submission_limit_check($node) && ($user->uid != 0 || variable_get('cache', 0) == 0)) {
           $panes[$pid]['enabled'] = FALSE;
         }
@@ -411,15 +412,16 @@ function uc_webform_pane_uc_order($op, &$order, $arg2) {
  * Save pane values as webform submission through Webform submit handler.
  */
 function _uc_webform_pane_save($nid, $order_id, $submitted) {
-  $node = node_load($nid);
+  global $user;
 
-  if ($sid = _uc_webform_pane_get_sid($nid, $order_id)) {
-    $values['details']['sid'] = $sid;
-  }
+  $node = node_load($nid);
+  $sid = _uc_webform_pane_get_sid($nid, $order_id);
 
   $values['op'] = t('Submit');
   $values['submitted'] = array_filter($submitted);
+  $values['details']['uid'] = $user->uid;
   $values['details']['nid'] = $nid;
+  $values['details']['sid'] = $sid;
   $values['details']['finished'] = FALSE;
 
   $form_state = array();
@@ -566,7 +568,7 @@ function _uc_webform_pane_edit_form($nid, $order_id, $pane_type) {
   // Make sure all the fields are validated appropriately
   foreach (element_children($form) as $k) {
     $form[$k]["#validated"] = FALSE;
-    if (isset($form[$k]["#type"]) && $form[$k]["#type"] != 'select') {
+    if (isset($form[$k]['#webform_component']['type'])) {
       $form[$k]['#process'][] = '_uc_webform_pane_component_include';
       $form[$k]['#process'] = array_reverse($form[$k]['#process']);
     }
@@ -582,8 +584,6 @@ function _uc_webform_pane_edit_form($nid, $order_id, $pane_type) {
  * Load the Webform component so that it could be properly processed on form submission.
  */
 function _uc_webform_pane_component_include($element) {
-  if (isset($element['#webform_component']['type'])) {
-    webform_component_include($element['#webform_component']['type']);
-  }
+  webform_component_include($element['#webform_component']['type']);
   return $element;
 }
