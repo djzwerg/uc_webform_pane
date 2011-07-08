@@ -2,7 +2,7 @@
 
 /**
  * @file uc_webform_pane.module
- * Ubercart Webform Checkout Panes module.
+ * Ubercart Webform Checkout Pane.
  *
  * @note Ubercart webform data is stored in database during checkout, even when order is not complete.
  */
