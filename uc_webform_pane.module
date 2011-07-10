@@ -233,11 +233,12 @@ function uc_webform_pane_uc_checkout_pane() {
     }
 
     $node = node_load($nid);
+    $body = current($node->body);
     $panes[] = array(
       'id' => 'webform_nid' . $nid,
       'callback' => $funcname,
       'title' => $node->title,
-      'desc' => $node->body,
+      'desc' => $body[0]['safe_value'],
       'weight' => 0,
       'enabled' => FALSE,
       'process' => TRUE,
@@ -256,9 +257,10 @@ function uc_webform_pane_uc_checkout_pane_callback($nid, $op, $order, $form = NU
     case 'view':
       $form = _uc_webform_pane_edit_form($nid, $order->order_id, 'checkout');
       $node = node_load($nid);
+      $body = current($node->body);
       return array(
         'contents' => $form,
-        'description' => $node->body,
+        'description' => $body[0]['safe_value'],
       );
       break;
     case 'process':
