@@ -513,7 +513,7 @@ function _uc_webform_pane_render($nid, $order_id) {
   $data = get_object_vars(_uc_webform_pane_get_data($nid, $order_id));
   $output = array();
   foreach ($node->webform['components'] as $field) {
-    if (!in_array($field['type'], array('hidden', 'markup'))) {
+    if (!in_array($field['type'], array('hidden', 'markup', 'fieldset'))) {
       $field_data = isset($data['data'][$field['cid']]['value']) ? $data['data'][$field['cid']]['value'] : NULL;
       $field_element = webform_component_invoke($field['type'], 'display', $field, $field_data);
       $submission_output = theme($field_element['#theme'], array('element' => $field_element));
@@ -555,31 +555,45 @@ function _uc_webform_pane_edit_form($nid, $order_id, $pane_type) {
   drupal_add_css(drupal_get_path('module', 'webform') . '/css/webform.css');
   drupal_add_js(drupal_get_path('module', 'webform') . '/js/webform.js');
 
+  // Load the node and make sure it's a Webform
   $node = node_load($nid);
-
   if (!$node->webform['components']) {
     return array();
   }
 
+  // Load the Webform
   $form = array();
   $form_state = array();
   $submission = _uc_webform_pane_get_data($nid, $order_id);
   $form = webform_client_form($form, $form_state, $node, $submission);
   $form = $form['submitted'];
 
-  // Make sure all the fields are validated appropriately
+  // Prepare form fields for processing using UCWP
+  _uc_webform_pane_edit_form_prepare($form, $pane_type);
+
+  return $form;
+}
+
+/**
+ * Prepare form fields for processing using UCWP.
+ */
+function _uc_webform_pane_edit_form_prepare(&$form, $pane_type) {
   foreach (element_children($form) as $k) {
     $form[$k]["#validated"] = FALSE;
+
     if (isset($form[$k]['#webform_component']['type'])) {
       $form[$k]['#process'][] = '_uc_webform_pane_component_include';
       $form[$k]['#process'] = array_reverse($form[$k]['#process']);
     }
+
     if ($pane_type == 'order') {
       $form[$k]["#required"] = FALSE;
     }
-  }
 
-  return $form;
+    if (isset($form[$k]["#type"]) && $form[$k]["#type"] == 'fieldset') {
+      _uc_webform_pane_edit_form_prepare($form[$k], $pane_type);
+    }
+  }
 }
 
 /**
