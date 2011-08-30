@@ -420,7 +420,7 @@ function _uc_webform_pane_save($nid, $order_id, $submitted) {
   $sid = _uc_webform_pane_get_sid($nid, $order_id);
 
   $values['op'] = t('Submit');
-  $values['submitted'] = array_filter($submitted);
+  $values['submitted'] = $submitted;
   $values['details']['uid'] = $user->uid;
   $values['details']['nid'] = $nid;
   $values['details']['sid'] = $sid;
