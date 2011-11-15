@@ -436,6 +436,13 @@ function _uc_webform_pane_save($nid, $order_id, $submitted) {
   $form_state['values']['submitted_tree'] = $form_state['values']['submitted'];
   $form_state['values']['submitted'] = _webform_client_form_submit_flatten($node, $form_state['values']['submitted']);
 
+  // Clean up anything that is not a Webform component
+  foreach (array_keys($form_state['values']['submitted']) as $key) {
+    if (!is_numeric($key)) {
+      unset($form_state['values']['submitted'][$key]);
+    }
+  }
+
   // Set a flag indicating processing should continue and be saved.
   $form_state['webform_completed'] = TRUE;
 
