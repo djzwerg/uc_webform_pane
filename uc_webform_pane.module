@@ -436,11 +436,21 @@ function _uc_webform_pane_save($nid, $order_id, $submitted) {
   $form_state['values']['submitted_tree'] = $form_state['values']['submitted'];
   $form_state['values']['submitted'] = _webform_client_form_submit_flatten($node, $form_state['values']['submitted']);
 
-  // Clean up anything that is not a Webform component
-  foreach (array_keys($form_state['values']['submitted']) as $key) {
+  // Do some cleaning up before our fake submit
+  foreach ($form_state['values']['submitted'] as $key => $value) {
+    // Clean up anything that is not a Webform component
     if (!is_numeric($key)) {
       unset($form_state['values']['submitted'][$key]);
     }
+    // Clean up empty values as these won't be save anyway
+    if (is_array($value) && sizeof($value) == 0) {
+      unset($form_state['values']['submitted'][$key]);
+    }
+  }
+
+  // If the values list ends up empty, all required fields must be empty - get out
+  if (!$form_state['values']['submitted']) {
+    return;
   }
 
   // Set a flag indicating processing should continue and be saved.
