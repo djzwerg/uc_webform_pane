@@ -287,11 +287,25 @@ function uc_webform_pane_uc_checkout_pane_alter(&$panes) {
       $nid = drupal_substr($pane['id'], 11);
       $node = node_load($nid);
 
-      // Check if the webform submission limit has already been reached
-      if ($node->webform['submit_limit'] != -1) {
-        include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'webform') . "/includes/webform.submissions.inc";
+      // Check if this page is cached or not
+      $cached = $user->uid == 0 && (variable_get('cache', 0) || drupal_page_is_cacheable() === FALSE);
 
-        if (_webform_submission_limit_check($node) && ($user->uid != 0 || variable_get('cache', 0) == 0)) {
+      // Check if the webform user submission limit has already been reached
+      if ($node->webform['submit_limit'] != -1) { // -1: Submissions are never throttled.
+        module_load_include('inc', 'webform', 'includes/webform.submissions');
+
+        // Disable the form if the limit is exceeded and page cache is not active
+        if (($user_limit_exceeded = _webform_submission_user_limit_check($node)) && !$cached) {
+          $panes[$pid]['enabled'] = FALSE;
+        }
+      }
+
+      // Check if the webform total submission limit has already been reached
+      if ($node->webform['total_submit_limit'] != -1) { // -1: Submissions are never throttled.
+        module_load_include('inc', 'webform', 'includes/webform.submissions');
+
+        // Disable the form if the limit is exceeded and page cache is not active
+        if (($total_limit_exceeded = _webform_submission_total_limit_check($node)) && !$cached) {
           $panes[$pid]['enabled'] = FALSE;
         }
       }
