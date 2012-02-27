@@ -233,12 +233,12 @@ function uc_webform_pane_uc_checkout_pane() {
     }
 
     $node = node_load($nid);
-    $body = current($node->body);
+    $body = !empty($node->body) ? $node->body[$node->language][0]['safe_value'] : '';
     $panes[] = array(
       'id' => 'webform_nid' . $nid,
       'callback' => $funcname,
       'title' => $node->title,
-      'desc' => $body[0]['safe_value'],
+      'desc' => $body,
       'weight' => 0,
       'enabled' => FALSE,
       'process' => TRUE,
@@ -257,10 +257,10 @@ function uc_webform_pane_uc_checkout_pane_callback($nid, $op, $order, $form = NU
     case 'view':
       $form = _uc_webform_pane_edit_form($nid, $order->order_id, 'checkout');
       $node = node_load($nid);
-      $body = current($node->body);
+      $body = !empty($node->body) ? $node->body[$node->language][0]['safe_value'] : '';
       return array(
         'contents' => $form,
-        'description' => $body[0]['safe_value'],
+        'description' => $body,
       );
       break;
     case 'process':
@@ -331,11 +331,12 @@ function uc_webform_pane_uc_order_pane() {
     }
 
     $node = node_load($nid);
+    $body = !empty($node->body) ? $node->body[$node->language][0]['safe_value'] : '';
     $panes[] = array(
       'id' => 'webform_nid' . $nid,
       'callback' => $funcname,
       'title' => $node->title,
-      'desc' => $node->body,
+      'desc' => $body,
       'class' => 'abs-left',
       'weight' => 7,
       'show' => array('view', 'customer', 'edit'),
