@@ -549,6 +549,7 @@ function _uc_webform_pane_render($nid, $order_id) {
     if (!in_array($field['type'], array('hidden', 'markup', 'fieldset'))) {
       $field_data = isset($data['data'][$field['cid']]['value']) ? $data['data'][$field['cid']]['value'] : NULL;
       $field_element = webform_component_invoke($field['type'], 'display', $field, $field_data);
+      $field_element['#webform_component'] = $field;
       $submission_output = theme($field_element['#theme'], array('element' => $field_element));
       if ($submission_output !== NULL) {
         $output[] = array(
