@@ -33,6 +33,7 @@ function uc_webform_pane_form_alter(&$form, &$form_state, $form_id) {
     if (function_exists('webform_validation_validate')) {
       $form['#validate'][] = 'uc_webform_pane_wv_validate';
     }
+    $form['#process'][] = 'webform_client_form_includes';
   }
 
   // Add a config option to webform nodes to enable them as checkout panes.
@@ -613,11 +614,6 @@ function _uc_webform_pane_edit_form_prepare(&$form, $pane_type) {
   foreach (element_children($form) as $k) {
     $form[$k]["#validated"] = FALSE;
 
-    if (isset($form[$k]['#webform_component']['type'])) {
-      $form[$k]['#process'][] = '_uc_webform_pane_component_include';
-      $form[$k]['#process'] = array_reverse($form[$k]['#process']);
-    }
-
     if ($pane_type == 'order') {
       $form[$k]["#required"] = FALSE;
     }
@@ -626,12 +622,4 @@ function _uc_webform_pane_edit_form_prepare(&$form, $pane_type) {
       _uc_webform_pane_edit_form_prepare($form[$k], $pane_type);
     }
   }
-}
-
-/**
- * Load the Webform component so that it could be properly processed on form submission.
- */
-function _uc_webform_pane_component_include($element) {
-  webform_component_include($element['#webform_component']['type']);
-  return $element;
 }
