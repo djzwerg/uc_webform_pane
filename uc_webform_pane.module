@@ -285,6 +285,11 @@ function uc_webform_pane_uc_checkout_pane_alter(&$panes) {
   // Validate all the webform panes individually during the checkout process
   foreach ($panes as $pid => $pane) {
     if (drupal_substr($pane['id'], 0, 11) == 'webform_nid') {
+      // Make sure Webform styles/scripts are shown
+      drupal_add_css(drupal_get_path('module', 'webform') . '/css/webform.css');
+      drupal_add_js(drupal_get_path('module', 'webform') . '/js/webform.js');
+
+      // Load the Webform node
       $nid = drupal_substr($pane['id'], 11);
       $node = node_load($nid);
 
@@ -586,9 +591,6 @@ function theme_uc_webform_pane_order_view($variables) {
  * Generate a form to edit webform submission data.
  */
 function _uc_webform_pane_edit_form($nid, $order_id, $pane_type) {
-  drupal_add_css(drupal_get_path('module', 'webform') . '/css/webform.css');
-  drupal_add_js(drupal_get_path('module', 'webform') . '/js/webform.js');
-
   // Load the node and make sure it's a Webform
   $node = node_load($nid);
   if (!$node->webform['components']) {
