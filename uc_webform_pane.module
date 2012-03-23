@@ -163,7 +163,7 @@ function uc_webform_pane_token_info() {
 
     $info = array();
     foreach ($node->webform['components'] as $field) {
-      if ($field['type'] == 'markup') {
+      if ($field['type'] == 'markup' || $field['type'] == 'fieldset') {
         continue;
       }
       $info['uc-webform-' . $nid . '-' . str_replace('_', '-', $field['form_key'])] = array(
@@ -202,11 +202,12 @@ function uc_webform_pane_tokens($type, $tokens, $data = array(), $options = arra
       $node = node_load($nid);
       $data = get_object_vars(_uc_webform_pane_get_data($nid, $order->order_id));
       foreach ($node->webform['components'] as $field) {
-        if ($field['type'] == 'markup') {
+        if ($field['type'] == 'markup' || $field['type'] == 'fieldset') {
           continue;
         }
         $field_data = isset($data['data'][$field['cid']]['value']) ? $data['data'][$field['cid']]['value'] : NULL;
         $field_element = webform_component_invoke($field['type'], 'display', $field, $field_data);
+        $field_element['#webform_component'] = $field;
         $submission_output = theme($field_element['#theme'], array('element' => $field_element));
         $values['uc-webform-' . $nid . '-' . str_replace('_', '-', $field['form_key'])] = $submission_output;
       }
