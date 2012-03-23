@@ -35,6 +35,12 @@ function uc_webform_pane_form_alter(&$form, &$form_state, $form_id) {
     }
     $form['#process'][] = 'webform_client_form_includes';
   }
+  
+  // Make sure the webform form supports files.
+  if ($form_id == 'uc_order_edit_form') {
+    $form['#attributes']['enctype'] = 'multipart/form-data';
+    $form['#process'][] = 'webform_client_form_includes';
+  }
 
   // Add a config option to webform nodes to enable them as checkout panes.
   if ($form_id == 'webform_configure_form') {
@@ -374,10 +380,6 @@ function uc_webform_pane_uc_order_pane_callback($nid, $op, $order, &$form = NULL
         '#collapsed' => FALSE,
       );
       foreach ($webform as $field_id => $field_settings) {
-        if (isset($field_settings['#webform_component']['type'])) {
-          $field_settings['#process'][] = '_uc_webform_pane_component_include';
-          $field_settings['#process'] = array_reverse($field_settings['#process']);
-        }
         $form['webform_nid' . $nid][$field_id] = $field_settings;
       }
       return $form;
