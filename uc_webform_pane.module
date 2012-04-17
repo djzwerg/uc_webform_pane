@@ -549,21 +549,23 @@ function _uc_webform_pane_get_nodes($join_type = 'INNER') {
  * Render webform submission data.
  */
 function _uc_webform_pane_render($nid, $order_id) {
-  $node = node_load($nid);
-
   $data = get_object_vars(_uc_webform_pane_get_data($nid, $order_id));
+
   $output = array();
-  foreach ($node->webform['components'] as $field) {
-    if (!in_array($field['type'], array('hidden', 'markup', 'fieldset'))) {
-      $field_data = isset($data['data'][$field['cid']]['value']) ? $data['data'][$field['cid']]['value'] : NULL;
-      $field_element = webform_component_invoke($field['type'], 'display', $field, $field_data);
-      $field_element['#webform_component'] = $field;
-      $submission_output = theme($field_element['#theme'], array('element' => $field_element));
-      if ($submission_output !== NULL) {
-        $output[] = array(
-          'title' => $field['name'],
-          'data' => $submission_output,
-        );
+  if ($data) {
+    $node = node_load($nid);
+    foreach ($node->webform['components'] as $field) {
+      if (!in_array($field['type'], array('hidden', 'markup', 'fieldset'))) {
+        $field_data = isset($data['data'][$field['cid']]['value']) ? $data['data'][$field['cid']]['value'] : NULL;
+        $field_element = webform_component_invoke($field['type'], 'display', $field, $field_data);
+        $field_element['#webform_component'] = $field;
+        $submission_output = theme($field_element['#theme'], array('element' => $field_element));
+        if ($submission_output !== NULL) {
+          $output[] = array(
+            'title' => $field['name'],
+            'data' => $submission_output,
+          );
+        }
       }
     }
   }
