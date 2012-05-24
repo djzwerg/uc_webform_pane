@@ -101,3 +101,10 @@ function uc_webform_pane_update_6204() {
   // Migrate old submissions to the new table.
   db_query("INSERT IGNORE INTO {uc_webform_pane_submissions} (nid, sid, order_id) SELECT w.nid, w.sid, w.data FROM {uc_webform_pane} p, {webform_submitted_data} w WHERE p.nid = w.nid AND p.cid_order_id = w.cid");
 }
+
+/**
+ * Assign all Webform pane submissions to order users (updates anonymous checkouts with user creation).
+ */
+function uc_webform_pane_update_6309() {
+  db_query("UPDATE {webform_submissions} ws NATURAL JOIN {uc_webform_pane_submissions} ucwp LEFT JOIN {uc_orders} o ON ucwp.order_id = o.order_id SET ws.uid = o.uid");
+}
