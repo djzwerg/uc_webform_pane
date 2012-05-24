@@ -327,6 +327,24 @@ function uc_webform_pane_uc_checkout_pane_alter(&$panes) {
 }
 
 /**
+ * Implements of hook_uc_checkout_complete().
+ */
+function uc_webform_pane_uc_checkout_complete($order, $account) {
+  // Assign the Webform pane submissions to the newly created user
+  if (isset($order->data['new_user'])) {
+    $webforms = _uc_webform_pane_get_nodes();
+    foreach ($webforms as $webform) {
+      $nid = $webform->nid;
+      // Get the sid for webform submission in the current order
+      $sid = _uc_webform_pane_get_sid($nid, $order->order_id);
+      if ($sid) {
+        db_query("UPDATE {webform_submissions} SET uid = :uid WHERE sid = :sid", array(':uid' => $order->uid, ':sid' => $sid));
+      }
+    }
+  }
+}
+
+/**
  * Implements hook_uc_order_pane().
  */
 function uc_webform_pane_uc_order_pane() {
