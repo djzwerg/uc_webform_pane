@@ -27,13 +27,14 @@ function uc_webform_pane_form_alter(&$form, &$form_state, $form_id) {
   global $user;
 
   // Make sure the webform form supports files.
-  if ($form_id == 'uc_cart_checkout_form') {
+  if ($form_id == 'uc_cart_checkout_form' || $form_id == 'uc_order_edit_form') {
     $form['#attributes']['enctype'] = 'multipart/form-data';
-    // Support for Webform Validation module
-    if (function_exists('webform_validation_validate')) {
-      $form['#validate'][] = 'uc_webform_pane_wv_validate';
-    }
     $form['#process'][] = 'webform_client_form_includes';
+  }
+
+  // Support for Webform Validation module
+  if ($form_id == 'uc_cart_checkout_form' && function_exists('webform_validation_validate')) {
+    $form['#validate'][] = 'uc_webform_pane_wv_validate';
   }
 
   // Make sure the webform form supports files.
@@ -403,7 +404,7 @@ function uc_webform_pane_uc_order_pane_callback($nid, $op, $order, &$form = NULL
       drupal_add_css(drupal_get_path('module', 'uc_webform_pane') . '/uc_webform_pane.css');
       $output = '<div id="webform-' . $nid . '-select"></div><table class="uc-webform-edit-table">';
       foreach (element_children($form['webform_nid' . $nid]) as $field) {
-        if (isset($form['webform_nid' . $nid][$field]['#type']) && $form['webform_nid' . $nid][$field]['#type'] == 'value') {
+        if (isset($form['webform_nid' . $nid][$field]['#type']) && in_array($form['webform_nid' . $nid][$field]['#type'], array('value', 'markup'))) {
           continue;
         }
         elseif (isset($form['webform_nid' . $nid][$field]['#type']) && $form['webform_nid' . $nid][$field]['#type'] == 'hidden') {
@@ -411,6 +412,11 @@ function uc_webform_pane_uc_order_pane_callback($nid, $op, $order, &$form = NULL
         }
         else {
           $title = $form['webform_nid' . $nid][$field]['#title'];
+          // Process select_or_other widgets
+          if (isset($form['webform_nid' . $nid][$field]['select'])) {
+            $title = $form['webform_nid' . $nid][$field]['select']['#title'];
+            $form['webform_nid' . $nid][$field]['select']['#title'] = NULL;
+          }
           $form['webform_nid' . $nid][$field]['#title'] = NULL;
           $output .= '<tr><td class="uwet-label">' . $title . ':</td><td>'
                    . drupal_render($form['webform_nid' . $nid][$field]) . '</td></tr>';
