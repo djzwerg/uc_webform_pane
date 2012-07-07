@@ -274,7 +274,10 @@ function uc_webform_pane_uc_checkout_pane_callback($nid, $op, $order, $form = NU
       return TRUE;
       break;
     case 'review':
-      return _uc_webform_pane_render($nid, $order->order_id);
+      $data =  _uc_webform_pane_render($nid, $order->order_id);
+      if ($data) {
+        return $data;
+      }
       break;
     default:
       break;
@@ -383,8 +386,11 @@ function uc_webform_pane_uc_order_pane_callback($nid, $op, $order, &$form = NULL
     case 'view':
     case 'customer':
       $data = _uc_webform_pane_render($nid, $order->order_id);
-      $build = array('#markup' => theme('uc_webform_pane_order_view', array('data' => $data)));
-      return $build;
+      if ($data) {
+        $build = array('#markup' => theme('uc_webform_pane_order_view', array('data' => $data)));
+        return $build;
+      }
+      break;
 
     case 'edit-form':
       $webform = _uc_webform_pane_edit_form($nid, $order->order_id, 'order');
@@ -575,7 +581,7 @@ function _uc_webform_pane_render($nid, $order_id) {
         $field_element = webform_component_invoke($field['type'], 'display', $field, $field_data);
         $field_element['#webform_component'] = $field;
         $submission_output = theme($field_element['#theme'], array('element' => $field_element));
-        if ($submission_output !== NULL) {
+        if ($submission_output !== NULL && trim($submission_output)) {
           $output[] = array(
             'title' => $field['name'],
             'data' => $submission_output,
