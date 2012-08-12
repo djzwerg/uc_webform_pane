@@ -265,12 +265,12 @@ function uc_webform_pane_uc_checkout_pane_callback($nid, $op, $order, $form = NU
       $node = node_load($nid);
       $body = !empty($node->body) ? $node->body[$node->language][0]['safe_value'] : '';
       return array(
-        'contents' => $form,
+        'contents' => array($form),
         'description' => $body,
       );
       break;
     case 'process':
-      _uc_webform_pane_save($nid, $order->order_id, $form_state['values']['panes']['webform_nid' . $nid]); // save to database
+      _uc_webform_pane_save($nid, $order->order_id, $form_state['values']['panes']['webform_nid' . $nid][0]); // save to database
       return TRUE;
       break;
     case 'review':
@@ -493,7 +493,7 @@ function _uc_webform_pane_save($nid, $order_id, $submitted) {
     if (!is_numeric($key)) {
       unset($form_state['values']['submitted'][$key]);
     }
-    // Clean up empty values as these won't be save anyway
+    // Clean up empty values as these won't be saved anyway
     if (is_array($value) && sizeof($value) == 0) {
       unset($form_state['values']['submitted'][$key]);
     }
@@ -622,13 +622,30 @@ function _uc_webform_pane_edit_form($nid, $order_id, $pane_type) {
   if (!$node->webform['components']) {
     return array();
   }
+  $submission = _uc_webform_pane_get_data($nid, $order_id);
+
+  // Mark the node as a checkout pane
+  $node->in_checkout = TRUE;
 
   // Load the Webform
-  $form = array();
-  $form_state = array();
-  $submission = _uc_webform_pane_get_data($nid, $order_id);
-  $form = webform_client_form($form, $form_state, $node, $submission);
-  $form = $form['submitted'];
+  $form_state = array('method' => 'post');
+  $form_state['build_info']['args'] = array($node, $submission);
+  $form = drupal_retrieve_form('webform_client_form_' . $node->nid, $form_state);
+  drupal_prepare_form('webform_client_form_' . $node->nid, $form, $form_state);
+  
+  // Remove some things that get in the way
+  foreach (array('details', 'form_id', 'form_token', 'form_build_id', 'actions', '#parents', '#theme', '#tree', '#id', '#type') as $key) {
+    unset($form[$key]);
+  }
+
+  // Wrap the form in same id's as it would be as a real Webform
+  $form['#prefix'] = '<div id="webform-client-form-'.$nid.'">';
+  $form['#suffix'] = '</div>';
+  
+  foreach ($form['submitted'] as $key => $field) {
+    $form[$key] = $field;
+  }
+  unset($form['submitted']);
 
   // Prepare form fields for processing using UCWP
   _uc_webform_pane_edit_form_prepare($form, $pane_type);
