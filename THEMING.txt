@@ -42,15 +42,16 @@ Feel free to edit it to adjust your needs.
 ====================================================
 <?php if($webformPaneValues): ?>
   <table>
-    <tr>
+    <?php foreach($webformPaneValues as $webformPaneValue): ?>
+      <tr>
 	<td colspan="2" bgcolor="#006699">
-	  <strong><?php print $webformPaneValues['title']; ?></strong>
+	  <strong><?php print $webformPaneValue['title']; ?></strong>
 	</td>
       </tr>
       <tr>
 	<td colspan="2">
 	  <table border="0" cellpadding="1" cellspacing="0" width="100%">
-	    <?php foreach ($webformPaneValues['components'] as $component): ?>
+	    <?php foreach ($webformPaneValue['components'] as $component): ?>
 	      <tr>
 		<td nowrap="nowrap">
 		  <strong><?php print $component['name']; ?>:</strong>
@@ -63,5 +64,6 @@ Feel free to edit it to adjust your needs.
 	  </table>
 	</td>
       </tr>
+    <?php endforeach; ?>
   </table>
 <?php endif; ?>
