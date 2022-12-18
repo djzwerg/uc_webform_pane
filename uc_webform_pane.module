@@ -79,8 +79,8 @@ function uc_webform_pane_wv_validate($form, &$form_state) {
     return;
   }
   foreach ($panes as $paneid => $values) {
-    if (drupal_substr($paneid, 0, 11) == 'webform_nid') {
-      $nid = drupal_substr($paneid, 11);
+    if (backdrop_substr($paneid, 0, 11) == 'webform_nid') {
+      $nid = backdrop_substr($paneid, 11);
 
       $pane_values = array();
       $pane_values['op'] = t('Submit');
@@ -125,7 +125,7 @@ function uc_webform_pane_webform_configure_form_submit($form, &$form_state) {
  */
 function uc_webform_pane_node_prepare($node) {
   if (in_array($node->type, webform_variable_get('webform_node_types'))) {
-    $node->webform['uc_webform_pane'] = isset($node->nid) ? uc_webform_pane_nodestatus($node->nid) : FALSE;
+    $node->webform['uc_webform_pane'] = isset($node->nid)?uc_webform_pane_nodestatus($node->nid) : FALSE;
   }
 }
 
@@ -150,7 +150,7 @@ function uc_webform_pane_nodestatus($nid) {
     ->execute()
     ->fetchField();
 
-  return $found ? TRUE : FALSE;
+  return $found?TRUE : FALSE;
 }
 
 /**
@@ -187,7 +187,7 @@ function uc_webform_pane_token_info() {
     $tokens['uc_order']['ucwf_' . $nid] = array(
       'name' => $node->title,
       'description' => t('Webform tokens.'),
-      'type' => 'ucwf_' . $nid
+      'type' => 'ucwf_' . $nid,
     );
   }
 
@@ -285,24 +285,24 @@ function uc_webform_pane_uc_checkout_pane_callback($nid, $op, $order, $form = NU
 }
 
 /**
- * Implements of drupal_alter('uc_checkout_pane', $panes).
+ * Implements of backdrop_alter('uc_checkout_pane', $panes).
  */
 function uc_webform_pane_uc_checkout_pane_alter(&$panes) {
   global $user;
 
   // Validate all the webform panes individually during the checkout process
   foreach ($panes as $pid => $pane) {
-    if ($pane['enabled'] == 1 && drupal_substr($pane['id'], 0, 11) == 'webform_nid') {
+    if ($pane['enabled'] == 1 && backdrop_substr($pane['id'], 0, 11) == 'webform_nid') {
       // Make sure Webform styles/scripts are shown
-      drupal_add_css(drupal_get_path('module', 'webform') . '/css/webform.css');
-      drupal_add_js(drupal_get_path('module', 'webform') . '/js/webform.js');
+      backdrop_add_css(backdrop_get_path('module', 'webform') . '/css/webform.css');
+      backdrop_add_js(backdrop_get_path('module', 'webform') . '/js/webform.js');
 
       // Load the Webform node
-      $nid = drupal_substr($pane['id'], 11);
+      $nid = backdrop_substr($pane['id'], 11);
       $node = node_load($nid);
 
       // Check if this page is cached or not
-      $cached = $user->uid == 0 && (variable_get('cache', 0) || drupal_page_is_cacheable() === FALSE);
+      $cached = $user->uid == 0 && (config_get('system.performance', 'cache') || backdrop_page_is_cacheable() === FALSE);
 
       // Check if the webform user submission limit has already been reached
       if ($node->webform['submit_limit'] != -1) { // -1: Submissions are never throttled.
@@ -328,7 +328,7 @@ function uc_webform_pane_uc_checkout_pane_alter(&$panes) {
 }
 
 /**
- * Implements of hook_uc_checkout_complete().
+ * Implements hook_uc_checkout_complete().
  */
 function uc_webform_pane_uc_checkout_complete($order, $account) {
   // Assign the Webform pane submissions to the newly created user
@@ -404,14 +404,14 @@ function uc_webform_pane_uc_order_pane_callback($nid, $op, $order, &$form = NULL
       return $form;
 
     case 'edit-theme':
-      drupal_add_css(drupal_get_path('module', 'uc_webform_pane') . '/uc_webform_pane.css');
+      backdrop_add_css(backdrop_get_path('module', 'uc_webform_pane') . '/uc_webform_pane.css');
       $output = '<div id="webform-' . $nid . '-select"></div><table class="uc-webform-edit-table">';
       foreach (element_children($form['webform_nid' . $nid]) as $field) {
         if (isset($form['webform_nid' . $nid][$field]['#type']) && in_array($form['webform_nid' . $nid][$field]['#type'], array('value', 'markup'))) {
           continue;
         }
         elseif (isset($form['webform_nid' . $nid][$field]['#type']) && $form['webform_nid' . $nid][$field]['#type'] == 'hidden') {
-          $output .= drupal_render($form['webform_nid' . $nid][$field]);
+          $output .= backdrop_render($form['webform_nid' . $nid][$field]);
         }
         else {
           $title = $form['webform_nid' . $nid][$field]['#title'];
@@ -422,7 +422,7 @@ function uc_webform_pane_uc_order_pane_callback($nid, $op, $order, &$form = NULL
           }
           $form['webform_nid' . $nid][$field]['#title'] = NULL;
           $output .= '<tr><td class="uwet-label">' . check_plain($title) . ':</td><td>'
-                   . drupal_render($form['webform_nid' . $nid][$field]) . '</td></tr>';
+                   . backdrop_render($form['webform_nid' . $nid][$field]) . '</td></tr>';
         }
       }
       $output .= '</table>';
@@ -441,7 +441,7 @@ function uc_webform_pane_uc_order($op, &$order, $arg2) {
   switch ($op) {
     // Delete from the database.
     case 'delete':
-      include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'webform') . "/includes/webform.submissions.inc";
+      include_once BACKDROP_ROOT . '/' . backdrop_get_path('module', 'webform') . "/includes/webform.submissions.inc";
       $uc_wf_subs = db_select('uc_webform_pane_submissions', 'uwps')
         ->fields('uwps', array('nid', 'sid'))
         ->condition('order_id', $order->order_id)
@@ -510,10 +510,10 @@ function _uc_webform_pane_save($nid, $order_id, $submitted) {
     $sid = $form_state['values']['details']['sid'];
     db_insert('uc_webform_pane_submissions')
       ->fields(array(
-          'nid' => $nid,
-          'sid' => $sid,
-          'order_id' => $order_id,
-        ))
+      'nid' => $nid,
+      'sid' => $sid,
+      'order_id' => $order_id,
+    ))
       ->execute();
   }
 }
@@ -535,7 +535,7 @@ function _uc_webform_pane_get_sid($nid, $order_id) {
  */
 function _uc_webform_pane_get_data($nid, $order_id) {
   if ($sid = _uc_webform_pane_get_sid($nid, $order_id)) {
-    include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'webform') . "/includes/webform.submissions.inc";
+    include_once BACKDROP_ROOT . '/' . backdrop_get_path('module', 'webform') . "/includes/webform.submissions.inc";
     return webform_get_submission($nid, $sid);
   }
   $empty = new stdClass();
@@ -627,8 +627,8 @@ function _uc_webform_pane_edit_form($nid, $order_id, $pane_type) {
   // Load the Webform
   $form_state = array('method' => 'post');
   $form_state['build_info']['args'] = array($node, $submission);
-  $form = drupal_retrieve_form('webform_client_form_' . $node->nid, $form_state);
-  drupal_prepare_form('webform_client_form_' . $node->nid, $form, $form_state);
+  $form = backdrop_retrieve_form('webform_client_form_' . $node->nid, $form_state);
+  backdrop_prepare_form('webform_client_form_' . $node->nid, $form, $form_state);
 
   // Remove some things that get in the way
   foreach (array('details', 'form_id', 'form_token', 'form_build_id', 'actions', '#parents', '#theme', '#tree', '#id', '#type', '#theme_wrappers') as $key) {
@@ -636,7 +636,7 @@ function _uc_webform_pane_edit_form($nid, $order_id, $pane_type) {
   }
 
   // Wrap the form in same id's as it would be as a real Webform
-  $form['#prefix'] = '<div id="webform-client-form-'.$nid.'">';
+  $form['#prefix'] = '<div id="webform-client-form-' . $nid . '">';
   $form['#suffix'] = '</div>';
 
   foreach ($form['submitted'] as $key => $field) {

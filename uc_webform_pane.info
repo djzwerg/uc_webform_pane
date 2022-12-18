@@ -1,6 +1,7 @@
 name = Ubercart Webform Checkout Pane
 description = "Allows Webform nodes to be displayed as checkout panes."
-core = 7.x
+backdrop = 1.x
+type = module
 package = Ubercart - extra
 
 dependencies[] = uc_product
@@ -8,5 +9,3 @@ dependencies[] = uc_store
 dependencies[] = uc_cart
 dependencies[] = webform
 
-files[] = uc_webform_pane.install
-files[] = uc_webform_pane.module
